@@ -1,38 +1,78 @@
 // ==========================================
-// 1. CONFIGURACIÓN, BASE DE DATOS Y ARRANQUE
+// 1. CONFIGURACIÓN, CONEXIÓN A SUPABASE Y ARRANQUE
 // ==========================================
 const AUTH = { user: "admin", pass: "admin123", secret: "FARMA777" };
 
+// 🔑 TUS CREDENCIALES DE SUPABASE:
+const SUPABASE_URL = "https://aulhwgtakozmsrsnemeu.supabase.co/rest/v1/"; 
+const SUPABASE_KEY = "sb_publishable_1Xn5wslEN-hXRjiYOW08Vw_iV1ztkTW"; 
+
+const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// Memoria virtual: Aquí se guardarán los datos de internet para que tu código funcione rápido
+let serverData = {
+  f_cats: ['Analgésicos', 'Antibióticos', 'Antiinflamatorios', 'Vitaminas'],
+  f_formas: ['Tab', 'Jarabe', 'Ampolla', 'Cápsula'],
+  f_prods: [], // Se llenará desde internet
+  f_lots: [],  
+  f_sales: [],
+  f_silenced_alerts: []
+};
+
+// 🌟 TU NUEVO OBJETO 'DB' (Ya NO usa LocalStorage)
 const DB = {
   get: (key, fallback) => {
-    try {
-      const item = localStorage.getItem(key);
-      return item ? JSON.parse(item) : fallback;
-    } catch {
-      return fallback;
-    }
+    // En lugar de buscar en la laptop, busca en la memoria virtual
+    return serverData[key] || fallback;
   },
-  set: (key, value) => localStorage.setItem(key, JSON.stringify(value))
+  set: (key, value) => {
+    // Actualiza la memoria virtual
+    serverData[key] = value;
+    // Nota: Aquí se implementará la subida a Supabase al registrar ventas/ingresos
+  }
 };
 
-// Inicializar base de datos LocalStorage con datos semilla
-const initStorage = (key, initialValue) => {
-  if (!localStorage.getItem(key)) DB.set(key, initialValue);
-};
+// Función maestra que descarga los productos del servidor al abrir el sistema
+async function loadServerData() {
+  console.log("Conectando al servidor de Supabase...");
+  try {
+    let { data, error } = await supabaseClient.from('productos').select('*');
+    if (error) throw error;
+    
+    // Adaptamos las columnas de Supabase al formato que lee tu sistema
+    if (data && data.length > 0) {
+      serverData.f_prods = data.map(p => ({
+        id: p.id,
+        desc: p.descrip || p.desc,
+        boxUnits: p.box_units,
+        blisterUnits: p.blister_units,
+        cat: p.cat,
+        forma: p.forma,
+        barcode: p.barcode,
+        cost: p.cost,
+        costMode: p.cost_mode,
+        priceBox: p.price_box,
+        priceUnit: p.price_unit,
+        useIgv: p.use_igv,
+        stock: p.stock
+      }));
+    }
+    console.log("¡Productos cargados desde internet!", serverData.f_prods);
+    
+    // Refrescamos la pantalla para mostrar los datos de la nube
+    if (typeof initSystem === 'function') initSystem();
+    
+  } catch (err) {
+    console.error("Error al conectar con la base de datos:", err);
+  }
+}
 
-initStorage('f_cats', ['Analgésicos', 'Antibióticos', 'Antiinflamatorios', 'Vitaminas']);
-initStorage('f_formas', ['Tab', 'Jarabe', 'Ampolla', 'Cápsula']);
-initStorage('f_prods', [
-  { id: "PROD-001", desc: "Amoxicilina 500mg", boxUnits: 100, blisterUnits: 10, cat: "Antibióticos", forma: "Cápsula", barcode: "7750123456789", cost: 15.00, costMode: "Caja", priceBox: 35.00, priceUnit: 0.40, useIgv: true },
-  { id: "PROD-002", desc: "Paracetamol 500mg Genérico", boxUnits: 100, blisterUnits: 10, cat: "Analgésicos", forma: "Tab", barcode: "7750987654321", cost: 5.00, costMode: "Caja", priceBox: 12.00, priceUnit: 0.15, useIgv: false }
-]);
-initStorage('f_lots', [
-  { id: "L-001", prodId: "PROD-001", code: "LOT-AMX26", expiry: "2026-06-25", stockUnits: 1500 }, 
-  { id: "L-002", prodId: "PROD-002", code: "LOT-PAR99", expiry: "2026-08-15", stockUnits: 4000 }  
-]);
-initStorage('f_sim', []);
-initStorage('f_sales', []);
-initStorage('f_silenced_alerts', []);
+// Arrancar la conexión en cuanto cargue la página
+window.addEventListener('DOMContentLoaded', loadServerData);
+
+// ==========================================
+// (FIN DEL BLOQUE 1) - AQUÍ ABAJO DEBE QUEDAR TU "let cart = [];"
+// ==========================================
 
 let cart = [];
 
