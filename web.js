@@ -3,77 +3,68 @@
 // ==========================================
 const AUTH = { user: "admin", pass: "admin123", secret: "FARMA777" };
 
-// 🔑 TUS CREDENCIALES DE SUPABASE:
+// 🔑 CREDENCIALES DE SUPABASE
 const SUPABASE_URL = "https://aulhwgtakozmsrsnemeu.supabase.co/rest/v1/"; 
 const SUPABASE_KEY = "sb_publishable_1Xn5wslEN-hXRjiYOW08Vw_iV1ztkTW"; 
 
-const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+let supabaseClient = null;
 
-// Memoria virtual: Aquí se guardarán los datos de internet para que tu código funcione rápido
+// Memoria virtual centralizada en internet
 let serverData = {
   f_cats: ['Analgésicos', 'Antibióticos', 'Antiinflamatorios', 'Vitaminas'],
   f_formas: ['Tab', 'Jarabe', 'Ampolla', 'Cápsula'],
-  f_prods: [], // Se llenará desde internet
-  f_lots: [],  
+  f_prods: [], // Se descargará de Supabase directamente
+  f_lots: [],  // ✨ TOTALMENTE VACÍO: Cada producto que crees nacerá en 0 unidades
   f_sales: [],
   f_silenced_alerts: []
 };
 
-// 🌟 TU NUEVO OBJETO 'DB' (Ya NO usa LocalStorage)
+// Objeto DB inteligente conectado a nuestra memoria virtual de internet
 const DB = {
   get: (key, fallback) => {
-    // En lugar de buscar en la laptop, busca en la memoria virtual
     return serverData[key] || fallback;
   },
   set: (key, value) => {
-    // Actualiza la memoria virtual
     serverData[key] = value;
-    // Nota: Aquí se implementará la subida a Supabase al registrar ventas/ingresos
   }
 };
 
-// Función maestra que descarga los productos del servidor al abrir el sistema
+// Función maestra que jala los productos en tiempo real al abrir el sistema
 async function loadServerData() {
-  console.log("Conectando al servidor de Supabase...");
+  console.log("Conectando al servidor centralizado de Supabase...");
   try {
+    if (typeof supabase === 'undefined') {
+      console.warn("Esperando un momento a que la librería Supabase responda...");
+      setTimeout(loadServerData, 300);
+      return;
+    }
+
+    if (!supabaseClient) {
+      supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    }
+
     let { data, error } = await supabaseClient.from('productos').select('*');
     if (error) throw error;
     
-    // Adaptamos las columnas de Supabase al formato que lee tu sistema
     if (data && data.length > 0) {
-      serverData.f_prods = data.map(p => ({
-        id: p.id,
-        desc: p.descrip || p.desc,
-        boxUnits: p.box_units,
-        blisterUnits: p.blister_units,
-        cat: p.cat,
-        forma: p.forma,
-        barcode: p.barcode,
-        cost: p.cost,
-        costMode: p.cost_mode,
-        priceBox: p.price_box,
-        priceUnit: p.price_unit,
-        useIgv: p.use_igv,
-        stock: p.stock
-      }));
+      serverData.f_prods = data; 
     }
-    console.log("¡Productos cargados desde internet!", serverData.f_prods);
+    console.log("¡Productos sincronizados desde la nube con éxito!", serverData.f_prods);
     
-    // Refrescamos la pantalla para mostrar los datos de la nube
-    if (typeof initSystem === 'function') initSystem();
+    if (typeof init === 'function') init();
     
   } catch (err) {
-    console.error("Error al conectar con la base de datos:", err);
+    console.error("Error crítico de conexión al servidor:", err);
   }
 }
 
-// Arrancar la conexión en cuanto cargue la página
-window.addEventListener('DOMContentLoaded', loadServerData);
+// Arrancar la descarga remota apenas abra la ventana y todo el HTML esté listo
+window.addEventListener('load', loadServerData);
 
 // ==========================================
-// (FIN DEL BLOQUE 1) - AQUÍ ABAJO DEBE QUEDAR TU "let cart = [];"
+// ABAJO DE ESTA LÍNEA SE MANTIENE TU CÓDIGO ORIGINAL: let cart = [];
 // ==========================================
-
+// ==========================================
 let cart = [];
 
 // Evento de carga de página global
