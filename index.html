@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>f@rmaVillaZar · Sistema POS & ERP Avanzado V4</title>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/remixicon@4.2.0/fonts/remixicon.css" rel="stylesheet">
+  <link rel="stylesheet" href="web.css">
+</head>
+<body>
+  <div class="login-overlay" id="login-screen">
+    <div class="login-box">
+      <div style="font-size: 2.5rem; color: var(--p3); margin-bottom: 1rem;"><i class="ri-capsule-fill"></i></div>
+      <h2>f@rmaVillaZar</h2>
+      <p>Sistema Avanzado V4 ERP & POS</p>
+      <div class="login-group">
+        <label>Usuario</label>
+        <input type="text" id="login-user" value="admin">
+      </div>
+      <div class="login-group">
+        <label>Contraseña</label>
+        <input type="password" id="login-pass" value="admin123">
+      </div>
+      <div class="login-group">
+        <label>Código Secreto</label>
+        <input type="password" id="login-secret" value="FARMA777">
+      </div>
+      <button class="btn-login" onclick="validateLogin()">INGRESAR AL SISTEMA CORPORATIVO</button>
+      <div class="login-error" id="login-error-msg">⚠️ Credenciales incorrectas. Verifique e intente nuevamente.</div>
+    </div>
+  </div>
+
+  <div class="sidebar">
+    <div class="brand"><i class="ri-heart-pulse-line"></i> f@rma<span>VillaZar</span></div>
+    <button class="menu-btn active" onclick="switchSection('ventas', this)"><i class="ri-computer-line"></i> Ventas / POS</button>
+    <button class="menu-btn" onclick="switchSection('caja', this)"><i class="ri-money-dollar-box-line"></i> caja</button>
+    <button class="menu-btn" onclick="switchSection('inventario-real', this)"><i class="ri-archive-line"></i> Inventario Real</button>
+    <button class="menu-btn" onclick="switchSection('productos', this)"><i class="ri-add-box-line"></i> Crear Productos</button>
+    <button class="menu-btn" onclick="switchSection('ingresos', this)"><i class="ri-download-2-line"></i> Ingresar Almacén</button>
+    <button class="menu-btn" onclick="switchSection('precios', this)"><i class="ri-money-dollar-box-line"></i> Precios de Lista</button>
+    <button class="menu-btn" onclick="switchSection('simulador', this)"><i class="ri-file-list-3-line"></i> Pedido Simulado</button>
+    <button class="menu-btn logout-btn" onclick="logout()"><i class="ri-logout-box-line"></i> Cerrar Sesión</button>
+    
+  </div>
+
+  <div class="main-content">
+
+<div id="sec-ventas" class="page-section active">
+  <div class="section-header">
+    <h1>Módulo de Caja y Ventas</h1>
+    <div class="badge badge-purple">POS Multiproducto</div>
+  </div>
+  <div class="pos-grid">
+    <div>
+      <div class="panel-card">
+        <div class="panel-title"><i class="ri-search-line"></i> 1. Buscar Medicamento</div>
+        <div class="search-container">
+          <input type="text" class="input-ctrl" id="pos-search" placeholder="Escriba el nombre del medicamento para seleccionarlo..." oninput="handleSearch(this.value)">
+          <div class="predictive-results" id="search-box"></div>
+        </div>
+
+        <div id="pre-add-panel" style="display:none; margin-top:15px; padding:15px; background:var(--card2); border-radius:12px; border:1px solid var(--p3);">
+          <h4 id="pre-title" style="margin-bottom:10px; color:#fff;">Producto Seleccionado</h4>
+          <input type="hidden" id="pre-id">
+          <div class="form-row">
+            <div class="form-group">
+              <label>Tipo Despacho</label>
+              <select class="input-ctrl" id="pre-mode" onchange="updatePrePrice()">
+                <option value="Unidad">Unidad Suelta</option>
+                <option value="Blíster">Blíster</option>
+                <option value="Caja">Caja Completa</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Precio Unit./Caja (Editable)</label>
+              <input type="number" step="0.01" class="input-ctrl" id="pre-price">
+            </div>
+            <div class="form-group">
+              <label>Cantidad</label>
+              <input type="number" class="input-ctrl" id="pre-qty" value="1" min="1">
+            </div>
+          </div>
+          <div style="text-align:right; margin-top:5px;">
+            <button class="btn btn-primary" onclick="confirmAddToCart()"><i class="ri-add-line"></i> ➕ Agregar a la Lista</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel-card">
+        <div class="panel-title"><i class="ri-shopping-cart-line"></i> 2. Lista de Productos a Facturar</div>
+        <div class="table-wrapper">
+          <table>
+            <thead>
+              <tr>
+                <th>Medicamento</th>
+                <th>Venta Por</th>
+                <th>Precio Unit.</th>
+                <th>Cant.</th>
+                <th>Subtotal</th>
+                <th>Quitar</th>
+              </tr>
+            </thead>
+            <tbody id="cart-table-body">
+              <tr><td colspan="6" style="text-align:center; color:var(--muted);">La lista está vacía. Seleccione un producto arriba y agréguelo.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="panel-card">
+        <div class="panel-title"><i class="ri-user-add-line"></i> Datos del Cliente y Comprobante</div>
+        
+        <div class="form-group">
+          <label>Tipo de Comprobante</label>
+          <select class="input-ctrl" id="sale-doc-type" onchange="handleDocTypeChange()">
+            <option value="BOLETA" selected>Boleta de Venta</option>
+            <option value="FACTURA">Factura Electrónica</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label id="lbl-cli-doc">DNI del Cliente</label>
+          <input type="text" class="input-ctrl" id="cli-doc" placeholder="Ej. 74839201" maxlength="11">
+        </div>
+
+        <div class="form-group">
+          <label id="lbl-cli-name">Nombres y Apellidos</label>
+          <input type="text" class="input-ctrl" id="cli-name" placeholder="Ej. Juan Pérez">
+        </div>
+
+        <div class="form-group">
+          <label>Dirección Fiscal / Domicilio</label>
+          <input type="text" class="input-ctrl" id="cli-address" placeholder="Ej. Av. Los Próceres 123">
+        </div>
+      </div>
+      <div class="panel-card">
+        <div class="panel-title"><i class="ri-calculator-line"></i> Totales de Operación</div>
+        <div style="display:flex; justify-content:space-between; margin-bottom:8px;"><span>Subtotal:</span><span id="tot-sub">S/. 0.00</span></div>
+        <div style="display:flex; justify-content:space-between; margin-bottom:8px;"><span>IGV (18%):</span><span id="tot-igv">S/. 0.00</span></div>
+        <hr style="border-color:var(--border); margin:12px 0;">
+        <div style="display:flex; justify-content:space-between; font-size:1.3rem; font-weight:700; color:#fff;"><span>TOTAL:</span><span id="tot-final">S/. 0.00</span></div>
+        <button class="btn btn-success" style="width:100%; margin-top:15px; justify-content:center; padding:0.9rem;" onclick="processSale()"><i class="ri-printer-line"></i> Grabar e Imprimir Venta</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="sec-caja" class="page-section">
+  <div class="section-header">
+    <h1>Arqueo, Cuadre Diario e Historial de Caja</h1>
+    <div class="badge badge-green">Auditoría Financiera</div>
+  </div>
+  <div class="panel-card">
+    <div class="panel-title"><i class="ri-history-line"></i> Consultar Ventas Emitidas</div>
+    <div class="form-row" style="max-width:400px; margin-bottom:15px;">
+      <div class="form-group">
+        <label>Seleccione Fecha de Auditoría</label>
+        <div style="display: flex; gap: 15px; align-items: center; margin-bottom: 15px; flex-wrap: wrap;">
+  <div>
+    <label style="font-size: 0.85rem; color: var(--muted); display:block; margin-bottom:4px;">Fecha Inicial (Desde):</label>
+    <input type="date" id="search-sale-start-date" class="input-ctrl" onchange="renderSalesHistory()">
+  </div>
+  <div>
+    <label style="font-size: 0.85rem; color: var(--muted); display:block; margin-bottom:4px;">Fecha Final (Hasta):</label>
+    <input type="date" id="search-sale-end-date" class="input-ctrl" onchange="renderSalesHistory()">
+  </div>
+</div>
+      </div>
+    </div>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr>
+            <th>N° Boleta</th>
+            <th>Hora</th>
+            <th>Cliente / Datos</th>
+            <th>Desglose Detallado de Fármacos Vendidos</th>
+            <th>Total Cobrado</th>
+          </tr>
+        </thead>
+        <tbody id="sales-history-body">
+          <tr><td colspan="5" style="text-align:center; color:var(--muted);">Seleccione una fecha para ver el historial de arqueo.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    
+    <div class="box-closure-summary" id="closure-box-container" style="margin-top:20px; display:flex; justify-content:space-between; background:rgba(0,180,100,0.15); padding:15px; border-radius:10px; border:1px solid rgba(0,180,100,0.3);">
+      <div>
+        <div style="font-size:0.85rem; font-weight:600; text-transform:uppercase;" id="closure-date-label">Fecha: No seleccionada</div>
+        <div style="font-size:0.75rem; color:var(--muted);">Suma total automatizada en base a boletas grabadas</div>
+      </div>
+      <div style="text-align:right;">
+        <span style="font-size:0.85rem; margin-right:5px;">EFECTIVO TOTAL EN CAJA:</span>
+        <span style="font-size:1.6rem; font-weight:800; color:#fff;" id="closure-total-amount">S/. 0.00</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="sec-ingresos" class="page-section">
+  <div class="section-header">
+    <h1>Ingreso Manual de Almacén</h1>
+  </div>
+  <div class="pos-grid">
+    <div class="panel-card">
+      <div class="panel-title"><i class="ri-login-box-line"></i> Cargar Stock y Lotes</div>
+      
+      <div class="form-group">
+        <label>Buscar Producto para añadir Stock</label>
+        <div class="search-container">
+          <input type="text" class="input-ctrl" id="ing-search-input" placeholder="Escriba el nombre para buscar en Almacén..." oninput="handleIngressSearch(this.value)">
+          <div class="predictive-results" id="ing-search-box" style="display:none;"></div>
+        </div>
+        <input type="hidden" id="ing-prod"> <div id="ing-selected-feedback" style="margin-top: 8px; font-weight: 600; color: var(--p3);"></div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group"><label>Cantidad Ingreso</label><input type="number" class="input-ctrl" id="ing-qty" value="1"></div>
+        <div class="form-group">
+          <label>Ingresar por Tipo</label>
+          <select class="input-ctrl" id="ing-unit-type">
+            <option value="Caja">Cajas Enteras</option>
+            <option value="Unidad">Unidades Sueltas</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+            <input type="hidden" id="ing-lot" value="LOTE-VILLAZAR">
+            
+            <div class="form-group" style="width: 100%;">
+              <label>Vencimiento (Obligatorio para alertas)</label>
+              <input type="date" class="input-ctrl" id="ing-expiry">
+            </div>
+          </div>
+      <div class="form-row">
+        <div class="form-group"><label>Costo de Compra S/.</label><input type="number" step="0.01" class="input-ctrl" id="ing-cost" placeholder="0.00"></div>
+        <div class="form-group">
+          <label>Costo Aplicado a</label>
+          <select class="input-ctrl" id="ing-cost-mode">
+            <option value="Caja">Por Caja</option>
+            <option value="Unidad">Por Unidad</option>
+          </select>
+        </div>
+      </div>
+      <button class="btn btn-success" onclick="executeIngress()"><i class="ri-download-cloud-line"></i> Guardar en Inventario Real</button>
+    </div>
+    <div class="panel-card">
+      <div class="panel-title"><i class="ri-archive-line"></i> Kárdex Detallado de Lotes cargados</div>
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr><th>Medicamento</th><th>Lote</th><th>Vence</th><th>Stock Físico total (uds)</th></tr>
+          </thead>
+          <tbody id="inventory-table-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+    <div id="sec-inventario-real" class="page-section">
+      <div class="section-header">
+        <h1>Kárdex Central, Lotes y Fechas de Vencimiento</h1>
+        <div class="badge badge-green">Monitoreo Epidemiológico</div>
+      </div>
+      <div class="panel-card">
+        <div class="panel-title"><i class="ri-filter-2-line"></i> Filtrar Stock Real y Alertas de Vencimiento Corto</div>
+        <input type="text" class="input-ctrl" id="inv-search" placeholder="Buscar producto en stock..." oninput="renderRealInventory()">
+        <div class="table-wrapper">
+          <table>
+            <thead>
+              <tr>
+                <th>Código / Lote</th>
+                <th>Descripción Completa</th>
+                <th>Fecha Vencimiento</th>
+                <th>Estado / Alerta</th>
+                <th>Stock Físico (Uds)</th>
+                <th>Gestión de Registro</th>
+              </tr>
+            </thead>
+            <tbody id="real-inventory-table-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div id="sec-productos" class="page-section">
+  <div class="section-header" style="display: flex; justify-content: space-between; align-items: center; width: 100%; gap: 20px; flex-wrap: wrap;">
+    <h1>Catálogo de Productos</h1>
+    
+    <div style="display: flex; gap: 10px; background: rgba(255,255,255,0.03); padding: 8px 15px; border-radius: 10px; align-items: center;">
+      <span style="font-size:0.75rem; color:var(--muted); font-weight:700;"><i class="ri-shield-check-line"></i> RESPALDOS EXTRAS:</span>
+      <button class="btn btn-success" style="font-size:0.75rem; padding: 5px 12px; background: #10b981;" onclick="exportSystemBackup()">
+        <i class="ri-download-cloud-line"></i> Guardar Copia (.JSON)
+      </button>
+      <label class="btn" style="background:var(--warning); font-size:0.75rem; padding: 5px 12px; cursor: pointer; margin: 0; display: inline-flex; align-items: center; gap: 4px; color: #fff; border-radius: 6px;">
+        <i class="ri-upload-cloud-line"></i> Subir Copia
+        <input type="file" accept=".json" style="display:none;" onchange="importSystemBackup(event)">
+      </label>
+    </div>
+  </div>
+
+  <div class="panel-card">
+  <div class="panel-title"><i class="ri-add-circle-line"></i> Registro de Nuevo Medicamento</div>
+  
+  <div style="position: relative; margin-bottom: 20px; background: rgba(255,255,255,0.03); padding: 12px; border-radius: 6px; border: 1px dashed rgba(255,255,255,0.1);">
+    <label style="font-weight: 600; display: block; margin-bottom: 6px; color: #00d5ff;">🔍 Buscar Producto existente para Editar:</label>
+    <input type="text" id="catalog-search-input" class="input-ctrl" placeholder="Escriba nombre o código de barra..." oninput="handleCatalogProductSearch(this.value)" autocomplete="off">
+    
+    <div id="catalog-search-box" style="display: none; position: absolute; left: 12px; right: 12px; background: #1e1a3a; border: 1px solid #00d5ff; max-height: 220px; overflow-y: auto; z-index: 999; border-radius: 4px; box-shadow: 0px 5px 15px rgba(0,0,0,0.5);"></div>
+  </div>
+
+  <input type="hidden" id="p-id-edit">
+
+  <div class="form-group">
+    <label>Descripción / Nombre Comercial</label>
+    <input type="text" class="input-ctrl" id="p-desc" placeholder="Ej. Paracetamol 500mg">
+  </div>
+    <div class="form-row">
+      <div class="form-group"><label>Unidades por Caja</label><input type="number" class="input-ctrl" id="p-box-units" value="100"></div>
+      <div class="form-group"><label>Unidades por Blíster</label><input type="number" class="input-ctrl" id="p-blister-units" value="10"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Categoría del Medicamento:</label>
+        <div style="display: flex; gap: 6px; margin-bottom: 12px;">
+          <select id="p-cat" class="input-ctrl" style="flex: 1;"></select>
+          <button type="button" class="btn btn-primary" onclick="addCategory()" style="padding: 4px 10px;">+ Añadir</button>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Forma Farmacéutica:</label>
+        <div style="display: flex; gap: 6px; margin-bottom: 12px;">
+          <select id="p-forma" class="input-ctrl" style="flex: 1;"></select>
+          <button type="button" class="btn btn-primary" onclick="addForma()" style="padding: 4px 10px;">+ Añadir</button>
+        </div>
+      </div>
+    </div>
+    <div class="form-group"><label>Código de Barras</label><input type="text" class="input-ctrl" id="p-barcode" placeholder="Escanee código de barras"></div>
+    
+    <div style="margin: 15px 0; padding: 12px; border: 1px solid var(--border); border-radius: 8px; background: rgba(255,255,255,0.01);">
+      <div style="font-size: 0.85rem; font-weight: 700; color: var(--p2); margin-bottom: 10px;"><i class="ri-money-dollar-circle-line"></i> CONFIGURACIÓN DE PRECIOS E IGV</div>
+      
+      <div class="form-row">
+        <div class="form-group">
+          <label>Costo Base (S/.)</label>
+          <input type="number" step="0.01" class="input-ctrl" id="p-cost" value="0.00">
+        </div>
+        <div class="form-group">
+          <label>Modo Costeo</label>
+          <select class="input-ctrl" id="p-cost-mode">
+            <option value="Caja">Por Caja</option>
+            <option value="Unidad">Por Unidad</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>Precio Venta Caja (S/.)</label>
+          <input type="number" step="0.01" class="input-ctrl" id="p-price-box" value="0.00">
+        </div>
+        <div class="form-group">
+          <label>Precio Venta Unidad (S/.)</label>
+          <input type="number" step="0.01" class="input-ctrl" id="p-price-unit" value="0.00">
+        </div>
+      </div>
+
+      <div class="form-group" style="margin-top: 10px;">
+        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: 500;">
+          <input type="checkbox" id="p-afecto-igv" checked style="width: 16px; height: 16px; accent-color: var(--p2);"> 
+          ¿Este producto incluye IGV (18%) en el precio de venta?
+        </label>
+      </div>
+    </div>
+    
+    <div id="product-action-button-zone">
+      <button class="btn btn-primary" style="width:100%; justify-content:center;" onclick="saveProduct()"><i class="ri-save-line"></i> Registrar Medicamento</button>
+    </div>
+  </div>
+
+    <div class="panel-card">
+      <div class="panel-title"><i class="ri-list-check-2"></i> Listado del Vademécum (Productos Existentes)</div>
+      <div class="table-wrapper" style="max-height:480px; overflow-y:auto;">
+        <table>
+          <thead>
+            <tr>
+              <th>Código</th>
+              <th>Descripción</th>
+              <th>Categoría</th>
+              <th>Forma</th>
+              <th>Acción</th>
+            </tr>
+          </thead>
+          <tbody id="catalog-table-body">
+            </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+    <div id="sec-ingresos" class="page-section">
+      <div class="section-header">
+        <h1>Ingreso Manual de Almacén</h1>
+      </div>
+      <div class="pos-grid">
+        <div class="panel-card">
+          <div class="panel-title"><i class="ri-login-box-line"></i> Cargar Stock y Lotes</div>
+          <div class="form-group">
+            <label>Seleccione Producto</label>
+            <select class="input-ctrl" id="ing-prod" onchange="updateIngressoPrecios()"></select>
+          </div>
+          <div class="form-row">
+            <div class="form-group"><label>Cantidad Ingreso</label><input type="number" class="input-ctrl" id="ing-qty" value="1"></div>
+            <div class="form-group">
+              <label>Ingresar por Tipo</label>
+              <select class="input-ctrl" id="ing-unit-type">
+                <option value="Caja">Cajas Enteras</option>
+                <option value="Unidad">Unidades Sueltas</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-row">
+        <input type="hidden" id="ing-lot" value="LOTE-VILLAZAR">
+        
+        <div class="form-group" style="width: 100%;">
+          <label>Vencimiento (Obligatorio)</label>
+          <input type="date" class="input-ctrl" id="ing-expiry">
+        </div>
+      </div>
+          <div class="form-row">
+            <div class="form-group"><label>Costo de Compra S/.</label><input type="number" step="0.01" class="input-ctrl" id="ing-cost" placeholder="0.00"></div>
+            <div class="form-group">
+              <label>Costo Aplicado a</label>
+              <select class="input-ctrl" id="ing-cost-mode">
+                <option value="Caja">Por Caja</option>
+                <option value="Unidad">Por Unidad</option>
+              </select>
+            </div>
+          </div>
+          <button class="btn btn-success" onclick="executeIngress()"><i class="ri-download-cloud-line"></i> Guardar en Inventario Real</button>
+        </div>
+        <div class="panel-card">
+          <div class="panel-title"><i class="ri-archive-line"></i> Kárdex Detallado de Lotes cargados</div>
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr><th>Medicamento</th><th>Lote</th><th>Vence</th><th>Stock Físico total (uds)</th></tr>
+              </thead>
+              <tbody id="inventory-table-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="sec-precios" class="page-section">
+      <div class="section-header">
+        <h1>Asignación y Control de Precios</h1>
+      </div>
+      <div class="panel-card">
+        <div class="panel-title"><i class="ri-money-dollar-circle-line"></i> Matriz de Costos, IGV y Configuración de Precios</div>
+        <div class="table-wrapper">
+          <table>
+            <thead>
+              <tr>
+                <th>Medicamento</th>
+                <th>Costo Caja / Unit</th>
+                <th>¿Aplica IGV (18%)?</th>
+                <th>Precio Venta Caja S/.</th>
+                <th>Precio Venta Unidad S/.</th>
+                <th>Acción</th>
+              </tr>
+            </thead>
+            <tbody id="prices-table-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div id="sec-simulador" class="page-section">
+      <div class="section-header">
+        <h1>Simulador de Pedidos</h1>
+      </div>
+      <div class="pos-grid">
+        <div class="panel-card">
+          <div class="panel-title"><i class="ri-file-add-line"></i> Planificar Compra Simulada</div>
+          <div class="form-group">
+            <label>Medicamento</label>
+            <select class="input-ctrl" id="sim-prod"></select>
+          </div>
+          <div class="form-row">
+            <div class="form-group"><label>Cantidad a Pedir</label><input type="number" class="input-ctrl" id="sim-qty" value="10"></div>
+            <div class="form-group">
+              <label>Tipo de Unidad</label>
+              <select class="input-ctrl" id="sim-type">
+                <option value="Caja">Cajas Enteras</option>
+                <option value="Unidad">Unidades Sueltas</option>
+              </select>
+            </div>
+          </div>
+          <button class="btn btn-primary" onclick="addToSimulation()"><i class="ri-add-line"></i> Enlistar en Simulación</button>
+        </div>
+        <div class="panel-card">
+          <div class="panel-title"><i class="ri-draft-line"></i> Pre-orden Generada</div>
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr><th>Medicamento</th><th>Pedido</th><th>Precio Est.</th><th>Total Est.</th></tr>
+              </thead>
+              <tbody id="simulation-table-body"></tbody>
+            </table>
+          </div>
+          <div style="margin-top:15px; display:flex; justify-content:space-between; align-items:center;">
+            <button class="btn btn-success" onclick="commitSimulation()"><i class="ri-upload-2-line"></i> Cargar Pedido Simulado a Inventario Real</button>
+            <button class="btn btn-danger" onclick="clearSimulation()">Limpiar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="receipt-backdrop" id="receipt-modal">
+    <div class="receipt-paper">
+      <h3>f@rmaVillaZar</h3>
+      <p>RUC: 20765432101</p>
+      <p>Jr. Las Azucenas 452 - Lima</p>
+      <div class="receipt-line"></div>
+      <p style="text-align:left; font-weight:bold;" id="rec-ticket-num">COMPROBANTE: </p>
+      <p style="text-align:left;" id="rec-date">FECHA: </p>
+      <p style="text-align:left;" id="rec-doc">DNI/RUC: </p>
+      <p style="text-align:left;" id="rec-cli">CLIENTE: </p>
+      <p style="text-align:left;" id="rec-address">DIRECCIÓN: </p>
+      <div class="receipt-line"></div>
+      <table style="width:100%; color:#000; font-family:monospace; font-size:0.8rem;">
+        <thead>
+          <tr style="border-bottom:1px dashed #333;">
+            <th style="background:none; color:#000; padding:4px 0;">Item</th>
+            <th style="background:none; color:#000; padding:4px 0; text-align:right;">Cant</th>
+            <th style="background:none; color:#000; padding:4px 0; text-align:right;">Total</th>
+          </tr>
+        </thead>
+        <tbody id="receipt-items-body"></tbody>
+      </table>
+      <div class="receipt-line"></div>
+      <div class="receipt-totals" style="display:flex; justify-content:space-between;"><span>SUBTOTAL:</span><span id="rec-sub">S/. 0.00</span></div>
+      <div class="receipt-totals" style="display:flex; justify-content:space-between;"><span>IGV (18%):</span><span id="rec-igv">S/. 0.00</span></div>
+      <div class="receipt-totals" style="display:flex; justify-content:space-between; font-size:1rem; margin-top:4px;"><span>TOTAL COMPRA:</span><span id="rec-total">S/. 0.00</span></div>
+      <div class="receipt-line"></div>
+      <p style="text-align:center; font-weight:bold; margin-top:10px;">¡Gracias por su preferencia!</p>
+      <div style="text-align:center; margin-top:20px;">
+        <button class="btn btn-primary" style="font-family:sans-serif;" onclick="closeReceipt()">Cerrar e Imprimir</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="receipt-backdrop" id="edit-inventory-modal">
+    <div class="receipt-paper" style="background: var(--card); color: var(--text); border: 1px solid var(--border); border-radius: 18px; font-family: inherit; font-size: inherit;">
+      <h3 style="color:#fff; text-align:left; font-family:'Syne';"><i class="ri-edit-box-line"></i> Editar Item Real</h3>
+      <div class="receipt-line" style="border-color: var(--border);"></div>
+      
+      <p style="text-align:left; font-weight:bold; color: var(--c2); margin-bottom: 15px;" id="edit-modal-title">Medicamento</p>
+      <input type="hidden" id="edit-target-lot-id">
+
+      <div id="edit-step-auth" class="edit-auth-box">
+        <div class="form-group">
+          <label style="color:var(--danger);">Código Secreto de Autorización</label>
+          <input type="password" class="input-ctrl" id="edit-auth-secret" placeholder="Ingrese código para desbloquear">
+        </div>
+        <button class="btn btn-danger" style="width:100%; justify-content:center;" onclick="unlockEditFields()">Desbloquear Edición</button>
+      </div>
+
+      <div id="edit-step-fields" style="display:none;">
+        <div class="form-group">
+          <label>Stock Físico Real (Unidades Sueltas)</label>
+          <input type="number" class="input-ctrl" id="edit-new-stock" min="0">
+        </div>
+        <div class="form-group">
+          <label>Nueva Fecha Vencimiento</label>
+          <input type="date" class="input-ctrl" id="edit-new-expiry">
+        </div>
+        <button class="btn btn-success" style="width:100%; justify-content:center; margin-top:10px;" onclick="saveInventoryEdits()">Guardar Cambios en Inventario</button>
+      </div>
+
+      <div style="text-align:center; margin-top:15px;">
+        <button class="btn btn-secondary" style="width:100%; justify-content:center;" onclick="closeEditModal()">Cancelar</button>
+      </div>
+    </div>
+  </div>
+  
+  <div class="receipt-backdrop" id="delete-sale-modal">
+    <div class="receipt-paper" style="background: var(--card); color: var(--text); border: 1px solid var(--border); border-radius: 18px; font-family: inherit; font-size: inherit;">
+      <h3 style="color:var(--danger); text-align:left; font-family:'Syne';"><i class="ri-git-repository-private-line"></i> Anular Comprobante</h3>
+      <div class="receipt-line" style="border-color: var(--border);"></div>
+    
+      <p style="text-align:left; font-weight:bold; color: #fff; margin-bottom: 15px;" id="delete-modal-ticket-title">Boleta: -</p>
+      <input type="hidden" id="delete-target-index">
+
+      <div id="delete-step-auth" class="edit-auth-box" style="border-color: rgba(239, 68, 68, 0.4); background: rgba(239, 68, 68, 0.05);">
+        <div class="form-group">
+          <label style="color:var(--danger); font-weight: 600;">Código Secreto de Autorización</label>
+          <input type="password" class="input-ctrl" id="delete-auth-secret" placeholder="Ingrese clave de autorización">
+        </div>
+        <button class="btn btn-danger" style="width:100%; justify-content:center; font-weight: 700;" onclick="unlockDeleteFields()">Validar Permisos</button>
+      </div>
+
+      <div id="delete-step-fields" style="display:none;">
+        <div class="form-group">
+          <label style="color:#fff;">Sustento / Motivo de Anulación (Obligatorio)</label>
+          <textarea class="input-ctrl" id="delete-reason" rows="3" placeholder="Ej. ERROR EN TIPO DE DESPACHO / CAMBIO DE PRODUCTO" style="resize: none; font-family: inherit; margin-top: 5px; padding: 10px;"></textarea>
+        </div>
+        <button class="btn btn-success" style="width:100%; justify-content:center; margin-top:10px; font-weight: 700;" onclick="confirmSaleAnulation()">Ejecutar Anulación en Sistema</button>
+      </div>
+
+      <div style="text-align:center; margin-top:15px;">
+        <button class="btn btn-secondary" style="width:100%; justify-content:center;" onclick="closeDeleteModal()">Cancelar / Salir</button>
+      </div>
+    </div>
+  </div>
+  <script src="web.js"></script>
+</body>
+</html>
